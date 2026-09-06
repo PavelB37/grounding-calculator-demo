@@ -24,14 +24,7 @@
   
   
   <button class="btn primary" id="calculate">Рассчитать</button>
-  <button
-    type="button"
-    class="btn secondary"
-    id="testApi"
-    onclick="testApiConnection()"
-  >
-    Проверить API
-  </button>
+  
   <button class="btn secondary" id="reset">Сбросить</button></div></div></section>
 
   
@@ -58,19 +51,19 @@ function selectRegion(name,zone){selectedRegion={name,zone};$('regionValue').tex
 $('soilTrigger').addEventListener('click',()=>$('soilPicker').classList.contains('open')?closePicker('soilPicker'):openPicker('soilPicker','soilSearch'));$('regionTrigger').addEventListener('click',()=>$('regionPicker').classList.contains('open')?closePicker('regionPicker'):openPicker('regionPicker','regionSearch'));$('soilSearch').addEventListener('input',e=>renderSoils(e.target.value));$('regionSearch').addEventListener('input',e=>renderRegions(e.target.value));['soilSearch','regionSearch'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.picker.open').forEach(x=>closePicker(x.id))}));document.addEventListener('click',e=>document.querySelectorAll('.picker.open').forEach(p=>{if(!p.contains(e.target))closePicker(p.id)}));renderSoils();renderRegions();
 function renderImage(){const rod=kind==='rod',img=$('electrodeImage'),missing=$('missing');img.style.display='block';missing.style.display='none';img.src=images[kind];img.alt=rod?'Штыревой заземлитель с проводником':'Заземлитель из уголка с проводником';$('imageTitle').textContent=rod?'Штыревой заземлитель':'Заземлитель из уголка'}$('electrodeImage').addEventListener('error',function(){this.style.display='none';$('missing').style.display='block'});
 function calc(){const rho=+$('rho').value,L=+$('length').value,t=+$('depth').value,K=regionGroups[selectedRegion.zone].k,de=kind==='rod'?+$('diameter').value/1000:.95*(+$('shelf').value)/1000;if(!rho||!L||!de||4*t<=L){$('r').textContent='Ошибка';return}const R=.366*rho*K/L*(Math.log10(2*L/de)+.5*Math.log10((4*t+L)/(4*t-L)));$('r').textContent=fmt(R)+' Ом';$('summary').textContent=`${kind==='rod'?'Круглый стержень':'Уголок'}, L = ${fmt(L,1)} м, ρ = ${fmt(rho,0)} Ом·м, t = ${fmt(t,1)} м.`;renderImage()}
-$('tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-kind]');if(!b)return;kind=b.dataset.kind;document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('active',x===b));$('df').style.display=kind==='rod'?'':'none';$('bf').style.display=kind==='angle'?'':'none';calc()});['rho','length','diameter','shelf','depth'].forEach(x=>$(x).addEventListener('input',calc));$('calculate').addEventListener('click',calc);$('reset').addEventListener('click',()=>{kind='rod';document.querySelector('[data-kind="rod"]').click();$('rho').value=100;$('soilValue').textContent='Суглинок — 100 Ом·м';$('length').value=3;$('diameter').value=16;$('shelf').value=50;$('depth').value=2;selectRegion('Ивановская область','III');calc()});$('theme').addEventListener('click',()=>document.documentElement.setAttribute('data-theme',document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'));calc();
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-kind]');if(!b)return;kind=b.dataset.kind;document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('active',x===b));$('df').style.display=kind==='rod'?'':'none';$('bf').style.display=kind==='angle'?'':'none';calc()});['rho','length','diameter','shelf','depth'].forEach(x=>$(x).addEventListener('input',calc));$('calculate').addEventListener('click', calculateViaApi);;$('reset').addEventListener('click',()=>{kind='rod';document.querySelector('[data-kind="rod"]').click();$('rho').value=100;$('soilValue').textContent='Суглинок — 100 Ом·м';$('length').value=3;$('diameter').value=16;$('shelf').value=50;$('depth').value=2;selectRegion('Ивановская область','III');calc()});$('theme').addEventListener('click',()=>document.documentElement.setAttribute('data-theme',document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'));calc();
 const API_BASE_URL =
   "https://grounding-calculator-api.bestolkov.workers.dev";
 
-async function testApiConnection() {
-    
-  const button = document.getElementById("testApi");
-  const previousText = button.textContent;
+async function calculateViaApi() {
+  const calculateButton = $("calculate");
+  const previousText = calculateButton.textContent;
 
   const regionData = regionGroups[selectedRegion.zone];
 
   if (!regionData) {
-    alert("Выберите регион из списка.");
+    $("r").textContent = "Ошибка";
+    $("summary").textContent = "Выберите регион из списка.";
     return;
   }
 
@@ -88,8 +81,8 @@ async function testApiConnection() {
     }
   };
 
-  button.disabled = true;
-  button.textContent = "Отправка в API...";
+  calculateButton.disabled = true;
+  calculateButton.textContent = "Расчёт...";
 
   try {
     const response = await fetch(
@@ -106,28 +99,33 @@ async function testApiConnection() {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.detail || "Ошибка ответа API");
+      throw new Error(data.detail || "Ошибка выполнения расчёта");
     }
 
     const resistance =
       data.result.single_electrode_resistance_ohm;
 
-    alert(
-      "Расчет выполнен через API.\n\n" +
-      "Сопротивление: " +
-      String(resistance).replace(".", ",") +
-      " Ом"
-    );
+    $("r").textContent = fmt(resistance) + " Ом";
+
+    $("summary").textContent =
+      `${kind === "rod" ? "Круглый стержень" : "Уголок"}, ` +
+      `L = ${fmt(payload.length_m, 1)} м, ` +
+      `ρ = ${fmt(payload.rho_ohm_m, 0)} Ом·м, ` +
+      `t = ${fmt(payload.middle_depth_m, 1)} м. ` +
+      `Расчёт выполнен через API.`;
+
+    renderImage();
   } catch (error) {
-    console.error("API error:", error);
-    alert("Ошибка связи с API: " + error.message);
+    console.error("API calculation error:", error);
+
+    $("r").textContent = "Ошибка";
+    $("summary").textContent =
+      "Не удалось выполнить расчёт через API: " + error.message;
   } finally {
-    button.disabled = false;
-    button.textContent = previousText;
+    calculateButton.disabled = false;
+    calculateButton.textContent = previousText;
   }
 }
-
-
 </script>
 </body>
 </html>
