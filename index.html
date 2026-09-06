@@ -61,7 +61,7 @@ async function testApiConnection() {
   const button = document.getElementById("testApi");
   const previousText = button.textContent;
 
-  const regionData = regionGroups[selectedRegionZone];
+  const regionData = regionGroups[selectedRegion.zone];
 
   if (!regionData) {
     alert("Выберите регион из списка.");
@@ -70,14 +70,14 @@ async function testApiConnection() {
 
   const payload = {
     electrode_kind: kind,
-    rho_ohm_m: Number(rho.value),
-    length_m: Number(length.value),
-    diameter_mm: Number(diameter.value),
-    shelf_mm: Number(shelf.value),
-    middle_depth_m: Number(depth.value),
+    rho_ohm_m: Number($("rho").value),
+    length_m: Number($("length").value),
+    diameter_mm: Number($("diameter").value),
+    shelf_mm: Number($("shelf").value),
+    middle_depth_m: Number($("depth").value),
     region: {
-      name: selectedRegionName,
-      zone: selectedRegionZone,
+      name: selectedRegion.name,
+      zone: selectedRegion.zone,
       coefficient: Number(regionData.k)
     }
   };
