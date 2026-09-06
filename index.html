@@ -24,7 +24,12 @@
   
   
   <button class="btn primary" id="calculate">Рассчитать</button>
-  <button class="btn secondary" id="testApi">
+  <button
+    type="button"
+    class="btn secondary"
+    id="testApi"
+    onclick="testApiConnection()"
+  >
     Проверить API
   </button>
   <button class="btn secondary" id="reset">Сбросить</button></div></div></section>
@@ -58,6 +63,8 @@ const API_BASE_URL =
   "https://grounding-calculator-api.bestolkov.workers.dev";
 
 async function testApiConnection() {
+  alert("Кнопка нажата. Начинаю отправку данных в API.");
+  
   const button = document.getElementById("testApi");
   const previousText = button.textContent;
 
@@ -121,9 +128,7 @@ async function testApiConnection() {
   }
 }
 
-document
-  .getElementById("testApi")
-  .addEventListener("click", testApiConnection);
+
 </script>
 </body>
 </html>
