@@ -63,18 +63,20 @@ async function testApiConnection() {
   const previousText = button.textContent;
 
   const payload = {
-    electrode_kind: kind,
-    rho_ohm_m: Number(rho.value),
-    length_m: Number(length.value),
-    diameter_mm: Number(diameter.value),
-    shelf_mm: Number(shelf.value),
-    middle_depth_m: Number(depth.value),
-    region: {
-      name: selectedRegion.name,
-      zone: selectedRegion.zone,
-      coefficient: regionGroups[selectedRegion.zone].k
-    }
-  };
+  electrode_kind: kind,
+  rho_ohm_m: Number(rho.value),
+  length_m: Number(length.value),
+  diameter_mm: Number(diameter.value),
+  shelf_mm: Number(shelf.value),
+  middle_depth_m: Number(depth.value),
+  region: {
+    name: selectedRegionName,
+    zone: selectedRegionZone,
+    coefficient: Number(regionGroups[selectedRegionZone].k)
+  }
+};
+
+  
 
   button.disabled = true;
   button.textContent = "Отправка в API...";
