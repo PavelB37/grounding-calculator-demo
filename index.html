@@ -20,8 +20,17 @@
 <section class="card"><div class="card-head"><span class="num">1</span><h2>Параметры заземлителя</h2></div><div class="card-body"><div class="fields"><div class="field full"><label>Тип заземлителя</label><div class="tabs" id="tabs"><button class="active" data-kind="rod">Круглый стержень</button><button data-kind="angle">Уголок</button></div></div>
 <div class="field full"><label>Тип грунта</label><div class="picker" id="soilPicker"><button type="button" class="picker-trigger" id="soilTrigger" aria-expanded="false"><span id="soilValue">Суглинок — 100 Ом·м</span></button><div class="picker-menu"><div class="search-wrap"><input id="soilSearch" type="search" placeholder="Введите тип грунта" autocomplete="off"></div><div class="picker-list" id="soilList"></div><div class="empty" id="emptySoils">Ничего не найдено</div></div></div><span class="hint">Нажмите на поле, затем начните вводить тип грунта.</span></div>
 <div class="field full"><label>Регион / климатический район</label><div class="picker" id="regionPicker"><button type="button" class="picker-trigger" id="regionTrigger" aria-expanded="false"><span id="regionValue">Ивановская область</span></button><div class="picker-menu"><div class="search-wrap"><input id="regionSearch" type="search" placeholder="Введите название области" autocomplete="off"></div><div class="picker-list" id="regionList"></div><div class="empty" id="emptyRegions">Ничего не найдено</div></div></div><span class="hint">Нажмите на поле, затем начните вводить название региона.</span></div>
-<div class="field"><label for="rho">Удельное сопротивление, Ом·м</label><input id="rho" type="number" min="1" value="100"></div><div class="field"><label for="length">Длина L, м</label><input id="length" type="number" min="0.1" step="0.1" value="3"></div><div class="field" id="df"><label for="diameter">Диаметр d, мм</label><input id="diameter" type="number" min="1" value="16"></div><div class="field" id="bf" style="display:none"><label for="shelf">Полка уголка b, мм</label><input id="shelf" type="number" min="1" value="50"></div><div class="field"><label for="depth">Расстояние до середины заземлителя t, м</label><input id="depth" type="number" min="0.1" step="0.1" value="2"><span class="hint">Как в формуле ДКС: от поверхности земли до середины электрода.</span></div></div><div class="actions"><button class="btn primary" id="calculate">Рассчитать</button><button class="btn secondary" id="reset">Сбросить</button></div></div></section>
-<section class="card"><div class="card-head"><span class="num">2</span><h2>Результат</h2></div><div class="card-body"><p class="results-title">Сопротивление одного вертикального электрода</p><div class="result-box"><div class="result-label">Расчётное сопротивление</div><div class="value" id="r">—</div><div class="summary" id="summary"></div></div><div class="note">В расчёте используется расстояние <strong>до середины электрода</strong> t, как в опубликованной формуле конфигуратора ДКС. Это помогает сопоставлять результаты при одинаковых исходных данных.</div></div></section>
+<div class="field"><label for="rho">Удельное сопротивление, Ом·м</label><input id="rho" type="number" min="1" value="100"></div><div class="field"><label for="length">Длина L, м</label><input id="length" type="number" min="0.1" step="0.1" value="3"></div><div class="field" id="df"><label for="diameter">Диаметр d, мм</label><input id="diameter" type="number" min="1" value="16"></div><div class="field" id="bf" style="display:none"><label for="shelf">Полка уголка b, мм</label><input id="shelf" type="number" min="1" value="50"></div><div class="field"><label for="depth">Расстояние до середины заземлителя t, м</label><input id="depth" type="number" min="0.1" step="0.1" value="2"><span class="hint">Как в формуле ДКС: от поверхности земли до середины электрода.</span></div></div><div class="actions">
+  
+  
+  <button class="btn primary" id="calculate">Рассчитать</button>
+  <button class="btn secondary" id="testApi">
+    Проверить API
+  </button>
+  <button class="btn secondary" id="reset">Сбросить</button></div></div></section>
+
+  
+  <section class="card"><div class="card-head"><span class="num">2</span><h2>Результат</h2></div><div class="card-body"><p class="results-title">Сопротивление одного вертикального электрода</p><div class="result-box"><div class="result-label">Расчётное сопротивление</div><div class="value" id="r">—</div><div class="summary" id="summary"></div></div><div class="note">В расчёте используется расстояние <strong>до середины электрода</strong> t, как в опубликованной формуле конфигуратора ДКС. Это помогает сопоставлять результаты при одинаковых исходных данных.</div></div></section>
 <section class="card picture"><div class="card-head"><span class="num">3</span><h2 id="imageTitle">Штыревой заземлитель</h2></div><div class="image-wrap"><img id="electrodeImage" src="generated-image-2.jpg" alt="Схема заземлителя"><div id="missing" class="missing">Изображение не найдено. Поместите файлы <code>generated-image-1.jpg</code> и <code>generated-image-2.jpg</code> в одну папку с HTML-файлом.</div></div></section>
 </main></div>
 <script>
@@ -45,6 +54,70 @@ $('soilTrigger').addEventListener('click',()=>$('soilPicker').classList.contains
 function renderImage(){const rod=kind==='rod',img=$('electrodeImage'),missing=$('missing');img.style.display='block';missing.style.display='none';img.src=images[kind];img.alt=rod?'Штыревой заземлитель с проводником':'Заземлитель из уголка с проводником';$('imageTitle').textContent=rod?'Штыревой заземлитель':'Заземлитель из уголка'}$('electrodeImage').addEventListener('error',function(){this.style.display='none';$('missing').style.display='block'});
 function calc(){const rho=+$('rho').value,L=+$('length').value,t=+$('depth').value,K=regionGroups[selectedRegion.zone].k,de=kind==='rod'?+$('diameter').value/1000:.95*(+$('shelf').value)/1000;if(!rho||!L||!de||4*t<=L){$('r').textContent='Ошибка';return}const R=.366*rho*K/L*(Math.log10(2*L/de)+.5*Math.log10((4*t+L)/(4*t-L)));$('r').textContent=fmt(R)+' Ом';$('summary').textContent=`${kind==='rod'?'Круглый стержень':'Уголок'}, L = ${fmt(L,1)} м, ρ = ${fmt(rho,0)} Ом·м, t = ${fmt(t,1)} м.`;renderImage()}
 $('tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-kind]');if(!b)return;kind=b.dataset.kind;document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('active',x===b));$('df').style.display=kind==='rod'?'':'none';$('bf').style.display=kind==='angle'?'':'none';calc()});['rho','length','diameter','shelf','depth'].forEach(x=>$(x).addEventListener('input',calc));$('calculate').addEventListener('click',calc);$('reset').addEventListener('click',()=>{kind='rod';document.querySelector('[data-kind="rod"]').click();$('rho').value=100;$('soilValue').textContent='Суглинок — 100 Ом·м';$('length').value=3;$('diameter').value=16;$('shelf').value=50;$('depth').value=2;selectRegion('Ивановская область','III');calc()});$('theme').addEventListener('click',()=>document.documentElement.setAttribute('data-theme',document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'));calc();
+
+const API_BASE_URL =
+  "https://grounding-calculator-api.bestolkov.workers.dev";
+
+async function testApiConnection() {
+  const button = document.getElementById("testApi");
+  const previousText = button.textContent;
+
+  const payload = {
+    electrode_kind: kind,
+    rho_ohm_m: Number(rho.value),
+    length_m: Number(length.value),
+    diameter_mm: Number(diameter.value),
+    shelf_mm: Number(shelf.value),
+    middle_depth_m: Number(depth.value),
+    region: {
+      name: selectedRegion.name,
+      zone: selectedRegion.zone,
+      coefficient: regionGroups[selectedRegion.zone].k
+    }
+  };
+
+  button.disabled = true;
+  button.textContent = "Отправка в API...";
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/calculations/vertical-electrode`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Ошибка ответа API");
+    }
+
+    console.log("Ответ Cloudflare API:", data);
+
+    alert(
+      "Связь с API работает.\n\n" +
+      "В API отправлен тип электрода: " + payload.electrode_kind + "\n" +
+      "ρ: " + payload.rho_ohm_m + " Ом·м\n" +
+      "L: " + payload.length_m + " м\n" +
+      "t: " + payload.middle_depth_m + " м"
+    );
+  } catch (error) {
+    console.error(error);
+    alert("Ошибка связи с API: " + error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = previousText;
+  }
+}
+
+document
+  .getElementById("testApi")
+  .addEventListener("click", testApiConnection);
 </script>
 </body>
 </html>
