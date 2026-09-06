@@ -32,52 +32,280 @@
 <section class="card picture"><div class="card-head"><span class="num">3</span><h2 id="imageTitle">Штыревой заземлитель</h2></div><div class="image-wrap"><img id="electrodeImage" src="generated-image-2.jpg" alt="Схема заземлителя"><div id="missing" class="missing">Изображение не найдено. Поместите файлы <code>generated-image-1.jpg</code> и <code>generated-image-2.jpg</code> в одну папку с HTML-файлом.</div></div></section>
 </main></div>
 <script>
-const images={rod:'generated-image-2.jpg',angle:'generated-image-1.jpg'};
+const API_BASE_URL =
+  "https://grounding-calculator-api.bestolkov.workers.dev";
 
-let kind='rod',selectedRegion={name:'Ивановская область',zone:'III'};const $=id=>document.getElementById(id);
-function fmt(v,d=2){return new Intl.NumberFormat('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d}).format(v)}
-function closePicker(id){const p=$(id);p.classList.remove('open');p.querySelector('.picker-trigger').setAttribute('aria-expanded','false')}
-function openPicker(id,searchId){const p=$(id);document.querySelectorAll('.picker.open').forEach(x=>x.classList.remove('open'));p.classList.add('open');p.querySelector('.picker-trigger').setAttribute('aria-expanded','true');setTimeout(()=>$(searchId).focus(),0)}
-function renderSoils(query=''){const q=query.trim().toLocaleLowerCase('ru'),list=$('soilList');list.innerHTML='';const found=soils.filter(([n])=>n.toLocaleLowerCase('ru').includes(q));found.forEach(([name,rho])=>{const b=document.createElement('button');b.type='button';b.className='picker-option';b.innerHTML=`<span>${name}</span><span class="picker-value">${rho}</span>`;b.addEventListener('click',()=>selectSoil(name,rho));list.append(b)});$('emptySoils').style.display=found.length?'none':'block'}
-function selectSoil(name,rho){$('soilValue').textContent=`${name} — ${rho} Ом·м`;$('rho').value=rho;closePicker('soilPicker');$('soilSearch').value='';renderSoils();markCalculationAsRequired()}
-function renderRegions(query=''){const q=query.trim().toLocaleLowerCase('ru'),list=$('regionList');list.innerHTML='';let count=0;Object.entries(regionGroups).forEach(([zone,data])=>{const matches=data.items.filter(n=>n.toLocaleLowerCase('ru').includes(q));if(!matches.length)return;count+=matches.length;const title=document.createElement('div');title.className='picker-group';title.textContent=`Климатический район ${zone}`;list.append(title);matches.forEach(name=>{const b=document.createElement('button');b.type='button';b.className='picker-option';b.textContent=name;b.addEventListener('click',()=>selectRegion(name,zone));list.append(b)})});$('emptyRegions').style.display=count?'none':'block'}
-function selectRegion(name,zone){selectedRegion={name,zone};$('regionValue').textContent=name;closePicker('regionPicker');$('regionSearch').value='';renderRegions();markCalculationAsRequired()}
-$('soilTrigger').addEventListener('click',()=>$('soilPicker').classList.contains('open')?closePicker('soilPicker'):openPicker('soilPicker','soilSearch'));$('regionTrigger').addEventListener('click',()=>$('regionPicker').classList.contains('open')?closePicker('regionPicker'):openPicker('regionPicker','regionSearch'));$('soilSearch').addEventListener('input',e=>renderSoils(e.target.value));$('regionSearch').addEventListener('input',e=>renderRegions(e.target.value));['soilSearch','regionSearch'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.picker.open').forEach(x=>closePicker(x.id))}));document.addEventListener('click',e=>document.querySelectorAll('.picker.open').forEach(p=>{if(!p.contains(e.target))closePicker(p.id)}));renderSoils();renderRegions();
-function renderImage(){const rod=kind==='rod',img=$('electrodeImage'),missing=$('missing');img.style.display='block';missing.style.display='none';img.src=images[kind];img.alt=rod?'Штыревой заземлитель с проводником':'Заземлитель из уголка с проводником';$('imageTitle').textContent=rod?'Штыревой заземлитель':'Заземлитель из уголка'}$('electrodeImage').addEventListener('error',function(){this.style.display='none';$('missing').style.display='block'});
+const images = {
+  rod: "generated-image-2.jpg",
+  angle: "generated-image-1.jpg"
+};
+
+const $ = id => document.getElementById(id);
+
+let kind = "rod";
+
+let selectedSoil = {
+  id: "loam",
+  name: "Суглинок",
+  rho_ohm_m: 100
+};
+
+let selectedRegion = {
+  id: "ivanovo",
+  name: "Ивановская область",
+  zone: "III",
+  coefficient: 1.3
+};
+
+let soils = [];
+let regions = [];
+
+function fmt(value, digits = 2) {
+  return new Intl.NumberFormat("ru-RU", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
+  }).format(value);
+}
+
+function closePicker(id) {
+  const picker = $(id);
+
+  picker.classList.remove("open");
+
+  picker
+    .querySelector(".picker-trigger")
+    .setAttribute("aria-expanded", "false");
+}
+
+function openPicker(id, searchId) {
+  document
+    .querySelectorAll(".picker.open")
+    .forEach(item => item.classList.remove("open"));
+
+  const picker = $(id);
+
+  picker.classList.add("open");
+
+  picker
+    .querySelector(".picker-trigger")
+    .setAttribute("aria-expanded", "true");
+
+  setTimeout(() => $(searchId).focus(), 0);
+}
 
 function markCalculationAsRequired() {
   $("r").textContent = "—";
+
   $("summary").textContent =
     "Параметры изменены. Нажмите «Рассчитать», чтобы выполнить расчёт через API.";
 
   renderImage();
 }
-  
-$('tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-kind]');if(!b)return;kind=b.dataset.kind;document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('active',x===b));$('df').style.display=kind==='rod'?'':'none';$('bf').style.display=kind==='angle'?'':'none';markCalculationAsRequired()});['rho','length','diameter','shelf','depth'].forEach(x=>$(x).addEventListener('input',markCalculationAsRequired));$('calculate').addEventListener('click', calculateViaApi);$('reset').addEventListener('click',()=>{kind='rod';document.querySelector('[data-kind="rod"]').click();$('rho').value=100;$('soilValue').textContent='Суглинок — 100 Ом·м';$('length').value=3;$('diameter').value=16;$('shelf').value=50;$('depth').value=2;selectRegion('Ивановская область','III');markCalculationAsRequired()});$('theme').addEventListener('click',()=>document.documentElement.setAttribute('data-theme',document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'));markCalculationAsRequired();
-const API_BASE_URL =
-  "https://grounding-calculator-api.bestolkov.workers.dev";
+
+function renderImage() {
+  const isRod = kind === "rod";
+  const image = $("electrodeImage");
+  const missing = $("missing");
+
+  image.style.display = "block";
+  missing.style.display = "none";
+
+  image.src = images[kind];
+
+  image.alt = isRod
+    ? "Штыревой заземлитель с проводником"
+    : "Заземлитель из уголка с проводником";
+
+  $("imageTitle").textContent = isRod
+    ? "Штыревой заземлитель"
+    : "Заземлитель из уголка";
+}
+
+function renderSoils(query = "") {
+  const normalizedQuery = query.trim().toLocaleLowerCase("ru");
+  const list = $("soilList");
+
+  list.innerHTML = "";
+
+  const found = soils.filter(item =>
+    item.name.toLocaleLowerCase("ru").includes(normalizedQuery)
+  );
+
+  found.forEach(soil => {
+    const button = document.createElement("button");
+
+    button.type = "button";
+    button.className = "picker-option";
+
+    button.innerHTML =
+      `<span>${soil.name}</span>` +
+      `<span class="picker-value">${soil.rho_ohm_m}</span>`;
+
+    button.addEventListener("click", () => selectSoil(soil));
+
+    list.append(button);
+  });
+
+  $("emptySoils").style.display =
+    found.length ? "none" : "block";
+}
+
+function selectSoil(soil) {
+  selectedSoil = soil;
+
+  $("soilValue").textContent =
+    `${soil.name} — ${soil.rho_ohm_m} Ом·м`;
+
+  // Поле оставлено для удобства пользователя,
+  // но API использует только soil_id.
+  $("rho").value = soil.rho_ohm_m;
+
+  closePicker("soilPicker");
+  $("soilSearch").value = "";
+
+  renderSoils();
+  markCalculationAsRequired();
+}
+
+function renderRegions(query = "") {
+  const normalizedQuery = query.trim().toLocaleLowerCase("ru");
+  const list = $("regionList");
+
+  list.innerHTML = "";
+
+  const found = regions.filter(item =>
+    item.name.toLocaleLowerCase("ru").includes(normalizedQuery)
+  );
+
+  const groups = {
+    I: [],
+    II: [],
+    III: [],
+    IV: []
+  };
+
+  found.forEach(region => {
+    if (groups[region.zone]) {
+      groups[region.zone].push(region);
+    }
+  });
+
+  let count = 0;
+
+  Object.entries(groups).forEach(([zone, items]) => {
+    if (!items.length) return;
+
+    count += items.length;
+
+    const title = document.createElement("div");
+
+    title.className = "picker-group";
+    title.textContent = `Климатический район ${zone}`;
+
+    list.append(title);
+
+    items.forEach(region => {
+      const button = document.createElement("button");
+
+      button.type = "button";
+      button.className = "picker-option";
+      button.textContent = region.name;
+
+      button.addEventListener("click", () => selectRegion(region));
+
+      list.append(button);
+    });
+  });
+
+  $("emptyRegions").style.display =
+    count ? "none" : "block";
+}
+
+function selectRegion(region) {
+  selectedRegion = region;
+
+  $("regionValue").textContent = region.name;
+
+  closePicker("regionPicker");
+  $("regionSearch").value = "";
+
+  renderRegions();
+  markCalculationAsRequired();
+}
+
+async function loadReferenceData() {
+  $("summary").textContent =
+    "Загрузка справочников грунтов и регионов из API...";
+
+  try {
+    const [soilsResponse, regionsResponse] = await Promise.all([
+      fetch(`${API_BASE_URL}/api/v1/reference/soils`),
+      fetch(`${API_BASE_URL}/api/v1/reference/regions`)
+    ]);
+
+    if (!soilsResponse.ok || !regionsResponse.ok) {
+      throw new Error("API не вернуло справочные данные");
+    }
+
+    const soilsData = await soilsResponse.json();
+    const regionsData = await regionsResponse.json();
+
+    soils = soilsData.items;
+    regions = regionsData.items;
+
+    const apiLoam = soils.find(item => item.id === "loam");
+    const apiIvanovo = regions.find(item => item.id === "ivanovo");
+
+    if (apiLoam) {
+      selectedSoil = apiLoam;
+    }
+
+    if (apiIvanovo) {
+      selectedRegion = apiIvanovo;
+    }
+
+    $("soilValue").textContent =
+      `${selectedSoil.name} — ${selectedSoil.rho_ohm_m} Ом·м`;
+
+    $("regionValue").textContent = selectedRegion.name;
+
+    $("rho").value = selectedSoil.rho_ohm_m;
+
+    renderSoils();
+    renderRegions();
+    markCalculationAsRequired();
+  } catch (error) {
+    console.error("Reference data error:", error);
+
+    $("r").textContent = "Ошибка";
+
+    $("summary").textContent =
+      "Не удалось загрузить справочники из API. Проверьте подключение к интернету.";
+  }
+}
 
 async function calculateViaApi() {
   const calculateButton = $("calculate");
   const previousText = calculateButton.textContent;
 
-  const regionData = regionGroups[selectedRegion.zone];
-
-  if (!regionData) {
+  if (!selectedSoil?.id || !selectedRegion?.id) {
     $("r").textContent = "Ошибка";
-    $("summary").textContent = "Выберите регион из списка.";
+
+    $("summary").textContent =
+      "Справочники еще не загружены. Подождите несколько секунд и попробуйте снова.";
+
     return;
   }
 
   const payload = {
-  electrode_kind: kind,
-  soil_id: selectedSoil.id,
-  region_id: selectedRegion.id,
-  length_m: Number($("length").value),
-  diameter_mm: Number($("diameter").value),
-  shelf_mm: Number($("shelf").value),
-  middle_depth_m: Number($("depth").value)
-};
+    electrode_kind: kind,
+    soil_id: selectedSoil.id,
+    region_id: selectedRegion.id,
+    length_m: Number($("length").value),
+    diameter_mm: Number($("diameter").value),
+    shelf_mm: Number($("shelf").value),
+    middle_depth_m: Number($("depth").value)
+  };
 
   calculateButton.disabled = true;
   calculateButton.textContent = "Расчёт...";
@@ -108,7 +336,7 @@ async function calculateViaApi() {
     $("summary").textContent =
       `${kind === "rod" ? "Круглый стержень" : "Уголок"}, ` +
       `L = ${fmt(payload.length_m, 1)} м, ` +
-      `ρ = ${fmt(payload.rho_ohm_m, 0)} Ом·м, ` +
+      `ρ = ${fmt(data.input.soil.rho_ohm_m, 0)} Ом·м, ` +
       `t = ${fmt(payload.middle_depth_m, 1)} м. ` +
       `Расчёт выполнен через API.`;
 
@@ -117,6 +345,7 @@ async function calculateViaApi() {
     console.error("API calculation error:", error);
 
     $("r").textContent = "Ошибка";
+
     $("summary").textContent =
       "Не удалось выполнить расчёт через API: " + error.message;
   } finally {
@@ -124,6 +353,122 @@ async function calculateViaApi() {
     calculateButton.textContent = previousText;
   }
 }
+
+$("soilTrigger").addEventListener("click", () => {
+  const isOpen = $("soilPicker").classList.contains("open");
+
+  if (isOpen) {
+    closePicker("soilPicker");
+  } else {
+    openPicker("soilPicker", "soilSearch");
+  }
+});
+
+$("regionTrigger").addEventListener("click", () => {
+  const isOpen = $("regionPicker").classList.contains("open");
+
+  if (isOpen) {
+    closePicker("regionPicker");
+  } else {
+    openPicker("regionPicker", "regionSearch");
+  }
+});
+
+$("soilSearch").addEventListener("input", event => {
+  renderSoils(event.target.value);
+});
+
+$("regionSearch").addEventListener("input", event => {
+  renderRegions(event.target.value);
+});
+
+["soilSearch", "regionSearch"].forEach(id => {
+  $(id).addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      document
+        .querySelectorAll(".picker.open")
+        .forEach(item => closePicker(item.id));
+    }
+  });
+});
+
+document.addEventListener("click", event => {
+  document
+    .querySelectorAll(".picker.open")
+    .forEach(picker => {
+      if (!picker.contains(event.target)) {
+        closePicker(picker.id);
+      }
+    });
+});
+
+$("tabs").addEventListener("click", event => {
+  const button = event.target.closest("button[data-kind]");
+
+  if (!button) return;
+
+  kind = button.dataset.kind;
+
+  document
+    .querySelectorAll("#tabs button")
+    .forEach(item => {
+      item.classList.toggle("active", item === button);
+    });
+
+  $("df").style.display = kind === "rod" ? "" : "none";
+  $("bf").style.display = kind === "angle" ? "" : "none";
+
+  markCalculationAsRequired();
+});
+
+["rho", "length", "diameter", "shelf", "depth"].forEach(id => {
+  $(id).addEventListener("input", markCalculationAsRequired);
+});
+
+$("calculate").addEventListener("click", calculateViaApi);
+
+$("reset").addEventListener("click", () => {
+  kind = "rod";
+
+  document.querySelector('[data-kind="rod"]').click();
+
+  const defaultSoil = soils.find(item => item.id === "loam");
+  const defaultRegion = regions.find(item => item.id === "ivanovo");
+
+  if (defaultSoil) {
+    selectSoil(defaultSoil);
+  }
+
+  if (defaultRegion) {
+    selectRegion(defaultRegion);
+  }
+
+  $("length").value = 3;
+  $("diameter").value = 16;
+  $("shelf").value = 50;
+  $("depth").value = 2;
+
+  markCalculationAsRequired();
+});
+
+$("theme").addEventListener("click", () => {
+  const currentTheme =
+    document.documentElement.getAttribute("data-theme");
+
+  document.documentElement.setAttribute(
+    "data-theme",
+    currentTheme === "dark" ? "light" : "dark"
+  );
+});
+
+$("electrodeImage").addEventListener("error", function () {
+  this.style.display = "none";
+  $("missing").style.display = "block";
+});
+
+renderImage();
+markCalculationAsRequired();
+loadReferenceData();
 </script>
 </body>
 </html>
